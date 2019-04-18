@@ -8,11 +8,11 @@ class BossData:
         self.bosses = bosses
 
     @staticmethod
-    def loadBossData(file='data/bosses.csv'):
+    def load_boss_data(file='data/bosses.csv'):
         bosses = []
         # NOTE: This assumes that the bosses are sorted in the csv.
-        with open(file, 'r') as bossDataCsv:
-            reader = csv.reader(bossDataCsv)
+        with open(file, 'r') as boss_data_csv:
+            reader = csv.reader(boss_data_csv)
             for row in reader:
                 name = row[3]
                 day = int(row[0])
@@ -31,40 +31,59 @@ class BossData:
             self.minute = minute
 
 class BossCycle:
-    tz = timezone(timedelta(hours=2))
+    tz = timezone(timedelta(hours=2), name = 'CEST')
 
-    def __init__(self, bossData, startingTimestamp):
-        assert(startingTimestamp.tzinfo is not None)
-        startingTimestamp = startingTimestamp.astimezone(self.tz)
+    def __init__(self, boss_data, starting_datetime):
+        assert(len(boss_data.bosses) > 3)
+        assert(starting_datetime.tzinfo is not None)
+        starting_datetime = starting_datetime.astimezone(self.tz)
 
-        self.bossEvents = []
-        self.currentBossEvent = 0
+        self.boss_events = []
+        self.current_boss_event = 0
 
-        floorMonday = startingTimestamp - timedelta(days = startingTimestamp.weekday())
+        floorMonday = starting_datetime - timedelta(days = starting_datetime.weekday())
         floorMonday = datetime(floorMonday.year, floorMonday.month, floorMonday.day, tzinfo = self.tz)
 
-        for boss in bossData.bosses:
-            timestamp = floorMonday + timedelta(days = boss.day, hours = boss.hour, minutes = boss.minute)
-            self.bossEvents.append(BossCycle.BossEvent(boss, timestamp))
+        for index, boss in enumerate(boss_data.bosses):
+            boss_datetime = floorMonday + timedelta(days = boss.day, hours = boss.hour, minutes = boss.minute)
+            self.boss_events.append(BossCycle.BossEvent(index, boss, boss_datetime))
 
-        while(self.current().timestamp < startingTimestamp):
-            self.next()
+        self.advance_till(starting_datetime)
 
-    def next(self):
-        self.bossEvents[self.currentBossEvent].timestamp += timedelta(days = 7)
-        self.currentBossEvent = (self.currentBossEvent + 1) % len(self.bossEvents)
+    def last(self):
+        return self.boss_events[(self.current_boss_event - 1) % len(self.boss_events)]
 
-        return self.bossEvents[self.currentBossEvent]
+    def next(self, pos = 0):
+        return self.boss_events[(self.current_boss_event + pos) % len(self.boss_events)]
 
-    def current(self):
-        return self.bossEvents[self.currentBossEvent]
+    def advance_till(self, datetime):
+        assert(datetime.tzinfo is not None)
+        datetime = datetime.astimezone(self.tz)
+
+        while(self.next().datetime < datetime):
+            self.advance()
+        return self.next()
+
+    def advance(self):
+        last_event_index = (self.current_boss_event - 1) % len(self.boss_events)
+        last_event = self.boss_events[last_event_index]
+        new_last_event = BossCycle.BossEvent(last_event.id + len(self.boss_events),
+            last_event.boss, last_event.datetime + timedelta(days = 7))
+        self.boss_events[last_event_index] = new_last_event
+
+        self.current_boss_event = (self.current_boss_event + 1) % len(self.boss_events)
+        return self.boss_events[self.current_boss_event]
+
+    def now(self):
+        return datetime.now(self.tz)
 
     @staticmethod
-    def now():
-        bossData = BossData.loadBossData()
-        return BossCycle(bossData, datetime.now(timezone.utc))
+    def new_from_now():
+        boss_data = BossData.load_boss_data()
+        return BossCycle(boss_data, datetime.now(timezone.utc))
 
     class BossEvent:
-        def __init__(self, boss, timestamp):
+        def __init__(self, id, boss, datetime):
+            self.id = id
             self.boss = boss
-            self.timestamp = timestamp
+            self.datetime = datetime
