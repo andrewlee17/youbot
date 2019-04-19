@@ -117,7 +117,7 @@ class YouBot(discord.Client):
         await guild_client.init()
 
         if self.current_status_message is not None:
-            await guild_client.update_Status(self.current_status_message,
+            await guild_client.update_status(self.current_status_message,
                 self.current_status_datetime)
 
         self.guild_clients.append(guild_client)
@@ -151,11 +151,16 @@ class YouBot(discord.Client):
 
             embed = discord.Embed(title = 'Current server time: {0}'.format(datetime.strftime('%A %I:%M %p %Z')), description = status)
 
-            if self.status_message is None:
-                self.status_message = await self.channel.send(content = _STATUS_CONTENT, embed = embed)
-                await self.channel.send(embed = discord.Embed().set_image(url = _TABLE_IMAGE))
-            else:
-                await self.status_message.edit(embed = embed)
+            if self.status_message is not None:
+                try:
+                    await self.status_message.edit(embed = embed)
+                    return
+                except discord.NotFound:
+                    print("Status message disappeared on {0}... re-initializing...".format(self.guild.name))
+                    await self.init()
+
+            self.status_message = await self.channel.send(content = _STATUS_CONTENT, embed = embed)
+            await self.channel.send(embed = discord.Embed().set_image(url = _TABLE_IMAGE))
 
         async def send_message(self, message):
             if self.channel is None or self.status_message is None:
