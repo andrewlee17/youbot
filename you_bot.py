@@ -21,6 +21,7 @@ class YouBot(discord.Client):
     last_warning = -1
     last_spawn = -1
     expiring_messages = deque()
+    guilds_init = False
 
     def __init__(self, bossCycle):
         self.boss_cycle = bossCycle
@@ -28,6 +29,10 @@ class YouBot(discord.Client):
 
     async def on_ready(self):
         print('Logged on as {0}!'.format(self.user), flush=True)
+
+        if self.guilds_init:
+            return
+        self.guilds_init = True
 
         for guild in self.guilds:
             await self.init_guild(guild)
