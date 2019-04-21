@@ -48,6 +48,7 @@ class BossCycle:
             boss_datetime = floorMonday + timedelta(days = boss.day, hours = boss.hour, minutes = boss.minute)
             self.boss_events.append(BossCycle.BossEvent(index, boss, boss_datetime))
 
+        self.boss_events[len(self.boss_events) - 1].datetime + timedelta(days = -7)
         self.advance_till(starting_datetime)
 
     def last(self):
